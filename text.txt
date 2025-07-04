@@ -1,0 +1,78 @@
+// src/App.js
+
+import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Home, ShoppingBag, MessageSquare, DollarSign, User } from 'lucide-react';
+
+const App = () => {
+  const [db, setDb] = useState(null);
+  const [auth, setAuth] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [currentPage, setCurrentPage] = useState('home');
+
+  useEffect(() => {
+    const firebaseConfigString = process.env.REACT_APP_FIREBASE_CONFIG;
+    if (!firebaseConfigString) {
+      console.error("Missing Firebase config");
+      setIsAuthReady(true);
+      return;
+    }
+    const firebaseConfig = JSON.parse(firebaseConfigString);
+    const app = initializeApp(firebaseConfig);
+    const firestoreDb = getFirestore(app);
+    const firebaseAuth = getAuth(app);
+
+    setDb(firestoreDb);
+    setAuth(firebaseAuth);
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+      if (user) {
+        setUserId(user.uid);
+      } else {
+        await signInAnonymously(firebaseAuth);
+      }
+      setIsAuthReady(true);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (!isAuthReady) {
+    return <div>Loading Lunorawear...</div>;
+  }
+
+  return (
+    <div>
+      <Header setCurrentPage={setCurrentPage} />
+      {currentPage === 'home' && <HomeSection />}
+      {currentPage === 'products' && <ProductsSection />}
+      {currentPage === 'chatbot' && <ChatbotSection db={db} auth={auth} userId={userId} />}
+      {currentPage === 'profit' && <ProfitDashboardSection db={db} auth={auth} userId={userId} />}
+      {currentPage === 'account' && <AccountSection db={db} auth={auth} userId={userId} />}
+      <Footer />
+    </div>
+  );
+};
+
+const Header = ({ setCurrentPage }) => (
+  <nav>
+    <button onClick={() => setCurrentPage('home')}>Home</button>
+    <button onClick={() => setCurrentPage('products')}>Products</button>
+    <button onClick={() => setCurrentPage('chatbot')}>AI Chat</button>
+    <button onClick={() => setCurrentPage('profit')}>Profit</button>
+    <button onClick={() => setCurrentPage('account')}>Account</button>
+  </nav>
+);
+
+// Example sections — replace with your full code!
+const HomeSection = () => <div>Welcome to Lunorawear!</div>;
+const ProductsSection = () => <div>Products here</div>;
+const ChatbotSection = () => <div>AI Chatbot here</div>;
+const ProfitDashboardSection = () => <div>Profit Dashboard here</div>;
+const AccountSection = () => <div>Account here</div>;
+const Footer = () => <footer>&copy; 2025 Lunorawear</footer>;
+
+export default App;
